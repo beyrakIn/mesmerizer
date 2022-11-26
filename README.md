@@ -4,7 +4,7 @@ Mesmerizer is a simple CLI tool to send SMS over Twilio API.
 
 ## Installation
 
-Change the configuration the build the binary
+Change the configuration in `main.go` and run `go build` to build the binary.
 
 ```golang
 	URL                 = "" // Twilio API URL
