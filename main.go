@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 )
 
@@ -17,16 +18,32 @@ var (
 	yellow = color.Yellow
 	bold   = color.New(color.Bold).SprintFunc()
 
-	URL                 = "" // Twilio API URL
-	ACCOUNT_SID         = "" // your account sid
-	AUTH_TOKEN          = "" // Twilio auth token
-	MessagingServiceSid = "" // Messaging Service SID
+	config = &Config{}
 
-	Version = "1.0.0"
+	Version = "1.1.0"
 )
 
 func init() {
 	header()
+
+	// read config file
+	data, err := readFile("config.json")
+	if err != nil {
+		red(bold("Error: " + err.Error()))
+		os.Exit(1)
+	}
+
+	// unmarshal json
+	err = jsonToStruct(data, config)
+	if err != nil {
+		red(bold("Error: " + err.Error()))
+		os.Exit(1)
+	}
+
+	if checkConfig() {
+		red(bold("Please fill all the fields in config.json"))
+		os.Exit(1)
+	}
 }
 
 func main() {
@@ -93,16 +110,16 @@ func main() {
 }
 
 func sendSMS(mobile, message string) (body any, error error) {
-	text := "To=" + mobile + "&Body=" + message + "&MessagingServiceSid=" + MessagingServiceSid
+	text := "To=" + mobile + "&Body=" + message + "&MessagingServiceSid=" + config.MessagingServiceSid
 	client := &http.Client{}
 	var data = strings.NewReader(text)
-	req, err := http.NewRequest("POST", URL, data)
+	req, err := http.NewRequest("POST", config.URL, data)
 	if err != nil {
 		return nil, err
 	}
 
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.SetBasicAuth(ACCOUNT_SID, AUTH_TOKEN)
+	req.SetBasicAuth(config.AccountSid, config.AuthToken)
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
@@ -131,12 +148,12 @@ func header() {
 // see messages sent
 func seeMessages() (data string, err error) {
 	client := &http.Client{}
-	req, err := http.NewRequest("GET", URL, nil)
+	req, err := http.NewRequest("GET", config.URL, nil)
 	if err != nil {
 		return "", err
 	}
 
-	req.SetBasicAuth(ACCOUNT_SID, AUTH_TOKEN)
+	req.SetBasicAuth(config.AccountSid, config.AuthToken)
 	resp, err := client.Do(req)
 	if err != nil {
 		return "", err
@@ -147,6 +164,42 @@ func seeMessages() (data string, err error) {
 		log.Fatal(err)
 	}
 	return string(body), nil
+}
+
+// function open the file and read the content
+func readFile(filename string) (content string, err error) {
+	// open file
+	file, err := os.Open(filename)
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+
+	// read file
+	data, err := ioutil.ReadAll(file)
+	if err != nil {
+		return "", err
+	}
+
+	return string(data), nil
+}
+
+func jsonToStruct(data string, v interface{}) (err error) {
+	err = json.Unmarshal([]byte(data), &v)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// check config struct is empty or not
+func checkConfig() (empty bool) {
+	if config.AccountSid == "" || config.AuthToken == "" || config.MessagingServiceSid == "" {
+		return true
+	}
+
+	return false
 }
 
 type Response struct {
@@ -185,4 +238,11 @@ type Message struct {
 		Media    string `json:"media"`
 		Feedback string `json:"feedback"`
 	} `json:"subresource_uris"`
+}
+
+type Config struct {
+	URL                 string `json:"url"`
+	AccountSid          string `json:"account_sid"`
+	AuthToken           string `json:"auth_token"`
+	MessagingServiceSid string `json:"messaging_service_sid"`
 }
