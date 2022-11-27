@@ -5,7 +5,7 @@ Mesmerizer is a simple CLI tool to send SMS over Twilio API.
 ## Installation
 
 Change the configuration in `config.json` and then use the tool or build your binary for your OS.
-
+If you download the tool as a binary, you should create a `config.json` file in the same directory as you can see below.
 ```json
 {
   "url": "",
